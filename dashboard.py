@@ -135,27 +135,29 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
     font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Onglets en pilules : actif = bleu électrique plein ---------- */
-[data-testid="stTabs"] [data-baseweb="tab-list"] {
-    gap: 8px;
-    flex-wrap: wrap;
-    background: transparent;
-}
-[data-testid="stTabs"] [data-baseweb="tab"] {
-    background: #131B2E;
-    border: 1px solid #2D3449;
+/* ---------- Navigation sidebar : radio déguisé en menu, actif = bleu plein ---------- */
+[data-testid="stSidebar"] [role="radiogroup"] { gap: 2px; }
+[data-testid="stSidebar"] label[data-baseweb="radio"] {
+    display: flex; align-items: center; width: 100%;
+    padding: 8px 12px; margin: 0;
     border-radius: 0.5rem;
-    padding: 7px 18px;
+    border: 1px solid transparent;
+    cursor: pointer;
     transition: border-color .15s ease, background .15s ease;
 }
-[data-testid="stTabs"] [data-baseweb="tab"]:hover { border-color: #3B82F6; }
-[data-testid="stTabs"] [aria-selected="true"] {
-    background: #0566D9 !important;
-    border-color: #0566D9 !important;
+[data-testid="stSidebar"] label[data-baseweb="radio"]:hover {
+    background: #131B2E; border-color: #2D3449;
 }
-[data-testid="stTabs"] [aria-selected="true"] p { color: #FFFFFF !important; }
-[data-testid="stTabs"] [data-baseweb="tab-highlight"],
-[data-testid="stTabs"] [data-baseweb="tab-border"] { display: none; }
+[data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child { display: none; }
+[data-testid="stSidebar"] label[data-baseweb="radio"] p {
+    color: #DAE2FD; font-size: 0.9rem;
+}
+[data-testid="stSidebar"] label[data-baseweb="radio"]:has(input:checked) {
+    background: #0566D9; border-color: #0566D9;
+}
+[data-testid="stSidebar"] label[data-baseweb="radio"]:has(input:checked) p {
+    color: #FFFFFF !important; font-weight: 600;
+}
 
 /* ---------- Sidebar : commande center ---------- */
 [data-testid="stSidebar"] {
@@ -176,14 +178,6 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
     color: #94A3B8; font-family: 'JetBrains Mono', monospace;
     font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
 }
-.nav-item {
-    display: flex; align-items: center; gap: 10px;
-    color: #DAE2FD; font-size: 0.88rem;
-    padding: 7px 12px; margin: 2px 0;
-    border-radius: 0.5rem;
-    border: 1px solid transparent;
-}
-.nav-item:hover { background: #131B2E; border-color: #2D3449; }
 .nav-stats {
     font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
     color: #94A3B8; letter-spacing: 0.05em;
@@ -270,6 +264,15 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Navigation principale : le menu de la sidebar pilote la section affichée au centre
+PAGES = [
+    "📊 Vue d'ensemble", "🏟️ Équipes", "📈 Descriptives",
+    "🔗 Corrélations", "🧭 ACP", "🎯 Clustering",
+    "⏱️ Séries temporelles", "🔮 Prédiction",
+]
+page = st.sidebar.radio("Navigation", PAGES, label_visibility="collapsed")
+
+st.sidebar.divider()
 saisons = sorted(df_full["season"].unique())
 saison_min, saison_max = st.sidebar.select_slider(
     "Saisons analysées",
@@ -284,17 +287,6 @@ st.sidebar.markdown(
     f'<b>{len(equipes)}</b> ÉQUIPES</div>',
     unsafe_allow_html=True,
 )
-st.sidebar.divider()
-sections = [
-    ("📊", "Vue d'ensemble"), ("🏟️", "Équipes"),
-    ("📈", "Statistiques descriptives"), ("🔗", "Corrélations"),
-    ("🧭", "ACP"), ("🎯", "Clustering"),
-    ("⏱️", "Séries temporelles"), ("🔮", "Prédiction (rég. logistique)"),
-]
-st.sidebar.markdown(
-    "".join(f'<div class="nav-item">{ico}&nbsp; {nom}</div>' for ico, nom in sections),
-    unsafe_allow_html=True,
-)
 
 st.markdown(f"""
 <div class="hero">
@@ -305,17 +297,10 @@ st.markdown(f"""
 </div>
 """.replace(",", " "), unsafe_allow_html=True)
 
-onglets = st.tabs([
-    "📊 Vue d'ensemble", "🏟️ Équipes", "📈 Descriptives",
-    "🔗 Corrélations", "🧭 ACP", "🎯 Clustering", "⏱️ Séries temporelles",
-    "🔮 Prédiction",
-])
-
-
 # ============================================================
-# ONGLET 1 — VUE D'ENSEMBLE
+# SECTION 1 — VUE D'ENSEMBLE
 # ============================================================
-with onglets[0]:
+if page == "📊 Vue d'ensemble":
     total = len(df)
     vic_dom = (df["result"] == "V").sum()
     nuls = (df["result"] == "N").sum()
@@ -386,9 +371,9 @@ with onglets[0]:
 
 
 # ============================================================
-# ONGLET 2 — ÉQUIPES
+# SECTION 2 — ÉQUIPES
 # ============================================================
-with onglets[1]:
+if page == "🏟️ Équipes":
     pts = points_par_equipe(df)
     profils = stats_par_equipe(df)
 
@@ -449,9 +434,9 @@ with onglets[1]:
 
 
 # ============================================================
-# ONGLET 3 — STATISTIQUES DESCRIPTIVES
+# SECTION 3 — STATISTIQUES DESCRIPTIVES
 # ============================================================
-with onglets[2]:
+if page == "📈 Descriptives":
     st.subheader("Tendance centrale, dispersion et forme des distributions")
 
     vars_desc = VARS_NUM + ["total_goals"]
@@ -526,9 +511,9 @@ with onglets[2]:
 
 
 # ============================================================
-# ONGLET 4 — CORRÉLATIONS
+# SECTION 4 — CORRÉLATIONS
 # ============================================================
-with onglets[3]:
+if page == "🔗 Corrélations":
     df_corr = df[VARS_NUM].rename(columns=NOMS_VARS)
     mat = df_corr.corr()
 
@@ -562,9 +547,9 @@ with onglets[3]:
 
 
 # ============================================================
-# ONGLET 5 — ACP
+# SECTION 5 — ACP
 # ============================================================
-with onglets[4]:
+if page == "🧭 ACP":
     X = StandardScaler().fit_transform(df[VARS_NUM])
     pca = PCA().fit(X)
     ve = pca.explained_variance_ratio_ * 100
@@ -641,9 +626,9 @@ with onglets[4]:
 
 
 # ============================================================
-# ONGLET 6 — CLUSTERING
+# SECTION 6 — CLUSTERING
 # ============================================================
-with onglets[5]:
+if page == "🎯 Clustering":
     profils = stats_par_equipe(df)
     X_eq = StandardScaler().fit_transform(profils)
 
@@ -711,9 +696,9 @@ with onglets[5]:
 
 
 # ============================================================
-# ONGLET 7 — SÉRIES TEMPORELLES
+# SECTION 7 — SÉRIES TEMPORELLES
 # ============================================================
-with onglets[6]:
+if page == "⏱️ Séries temporelles":
     serie = (df.set_index("date")
                .resample("MS")["total_goals"]
                .mean())
@@ -763,9 +748,9 @@ with onglets[6]:
 
 
 # ============================================================
-# ONGLET 8 — PRÉDICTION (RÉGRESSION LOGISTIQUE)
+# SECTION 8 — PRÉDICTION (RÉGRESSION LOGISTIQUE)
 # ============================================================
-with onglets[7]:
+if page == "🔮 Prédiction":
     st.subheader("Prédire le résultat d'un match à partir des statistiques de jeu")
     st.caption(
         "Régression logistique multinomiale — cible : V (victoire domicile), "

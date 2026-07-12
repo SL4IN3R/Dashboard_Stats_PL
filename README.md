@@ -5,9 +5,9 @@ Données : [Understat.com](https://understat.com) — 3 420 matchs de Premier Le
 
 ## Aperçu
 
-7 onglets interactifs, pilotés par un filtre global de saisons :
+8 sections accessibles depuis la barre de navigation latérale, pilotées par un filtre global de saisons :
 
-| Onglet | Contenu |
+| Section | Contenu |
 |---|---|
 | 📊 Vue d'ensemble | KPIs, distribution des résultats, buts par saison, xG vs buts réels |
 | 🏟️ Équipes | Classement des points cumulés, radar de profil par équipe |
