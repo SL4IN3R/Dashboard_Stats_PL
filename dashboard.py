@@ -20,6 +20,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 from statsmodels.tsa.seasonal import seasonal_decompose
 
 # ------------------------------------------------------------
@@ -112,7 +115,8 @@ st.sidebar.markdown(
     "- Corrélations\n"
     "- ACP\n"
     "- Clustering\n"
-    "- Séries temporelles"
+    "- Séries temporelles\n"
+    "- Prédiction (rég. logistique)"
 )
 
 st.title("Performances en Premier League (2015-2023)")
@@ -121,6 +125,7 @@ st.caption(f"Période affichée : saisons {saison_min}-{saison_min+1} à {saison
 onglets = st.tabs([
     "📊 Vue d'ensemble", "🏟️ Équipes", "📈 Descriptives",
     "🔗 Corrélations", "🧭 ACP", "🎯 Clustering", "⏱️ Séries temporelles",
+    "🔮 Prédiction",
 ])
 
 
@@ -572,3 +577,136 @@ with onglets[6]:
     else:
         st.warning("Sélectionnez au moins 2 saisons pour afficher la décomposition "
                    "saisonnière (24 mois minimum).")
+
+
+# ============================================================
+# ONGLET 8 — PRÉDICTION (RÉGRESSION LOGISTIQUE)
+# ============================================================
+with onglets[7]:
+    st.subheader("Prédire le résultat d'un match à partir des statistiques de jeu")
+    st.caption(
+        "Régression logistique multinomiale — cible : V (victoire domicile), "
+        "N (nul), D (victoire extérieur). Features : xG, tirs, tirs cadrés, "
+        "deep passes et PPDA des deux équipes."
+    )
+
+    FEATURES = ["h_xg", "a_xg", "h_shot", "a_shot",
+                "h_shotOnTarget", "a_shotOnTarget",
+                "h_deep", "a_deep", "h_ppda", "a_ppda"]
+
+    X_pred = df[FEATURES]
+    y_pred_cible = df["result"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_pred, y_pred_cible, test_size=0.2, random_state=42, stratify=y_pred_cible
+    )
+    scaler_pred = StandardScaler().fit(X_train)
+    model = LogisticRegression(max_iter=1000, random_state=42)
+    model.fit(scaler_pred.transform(X_train), y_train)
+    y_hat = model.predict(scaler_pred.transform(X_test))
+
+    accuracy = accuracy_score(y_test, y_hat)
+    classe_majo = y_train.value_counts().idxmax()
+    accuracy_naive = (y_test == classe_majo).mean()
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Accuracy du modèle", f"{accuracy*100:.1f}%")
+    c2.metric(f"Modèle naïf (toujours « {classe_majo} »)", f"{accuracy_naive*100:.1f}%")
+    c3.metric("Gain vs naïf", f"+{(accuracy - accuracy_naive)*100:.1f} pts")
+    c4.metric("Matchs de test", len(y_test))
+
+    col_g, col_d = st.columns(2)
+
+    with col_g:
+        LABELS_RES = ["V", "N", "D"]
+        NOMS_RES = ["Victoire dom.", "Nul", "Victoire ext."]
+        cm = confusion_matrix(y_test, y_hat, labels=LABELS_RES)
+        fig = px.imshow(cm, text_auto=True, color_continuous_scale="Blues",
+                        x=[f"Prédit {n}" for n in NOMS_RES],
+                        y=[f"Réel {n}" for n in NOMS_RES],
+                        title="Matrice de confusion (ensemble de test)")
+        fig.update_layout(height=440, margin=dict(t=50, b=10),
+                          coloraxis_showscale=False)
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col_d:
+        coefs = pd.DataFrame(model.coef_, columns=FEATURES, index=model.classes_)
+        importance = coefs.abs().mean(axis=0).sort_values()
+        fig = go.Figure(go.Bar(
+            x=importance.values,
+            y=[NOMS_VARS[v] for v in importance.index],
+            orientation="h", marker_color=C_DOM,
+        ))
+        fig.update_layout(
+            title="Importance des variables<br><sup>moyenne des |coefficients| sur les 3 classes</sup>",
+            xaxis_title="Importance", height=440, margin=dict(t=60, b=10),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("Rapport de classification détaillé"):
+        rapport = classification_report(y_test, y_hat, output_dict=True)
+        df_rapport = pd.DataFrame(rapport).T.round(3)
+        df_rapport.index = df_rapport.index.map(
+            {"V": "Victoire dom. (V)", "N": "Nul (N)", "D": "Victoire ext. (D)",
+             "accuracy": "Accuracy", "macro avg": "Moyenne macro",
+             "weighted avg": "Moyenne pondérée"})
+        st.dataframe(df_rapport, use_container_width=True)
+        st.caption(
+            "Le modèle prédit bien les victoires nettes mais peine sur les matchs "
+            "nuls — un résultat classique : le nul est la classe la moins fréquente "
+            "et la plus « aléatoire » (un match dominé peut finir 0-0)."
+        )
+
+    # --- Simulateur interactif ---
+    st.divider()
+    st.subheader("🎮 Simulateur — entrez les stats d'un match")
+    st.caption("Réglez les statistiques des deux équipes, le modèle prédit le résultat. "
+               "Rappel : PPDA faible = pressing intense.")
+
+    col_dom, col_ext = st.columns(2)
+    saisie = {}
+    BORNES = {  # (min, max, défaut domicile, défaut extérieur, pas)
+        "xg":           (0.0, 6.0, float(df["h_xg"].mean().round(1)), float(df["a_xg"].mean().round(1)), 0.1),
+        "shot":         (0, 40, int(df["h_shot"].mean()), int(df["a_shot"].mean()), 1),
+        "shotOnTarget": (0, 20, int(df["h_shotOnTarget"].mean()), int(df["a_shotOnTarget"].mean()), 1),
+        "deep":         (0, 40, int(df["h_deep"].mean()), int(df["a_deep"].mean()), 1),
+        "ppda":         (2.0, 30.0, float(df["h_ppda"].mean().round(1)), float(df["a_ppda"].mean().round(1)), 0.5),
+    }
+    NOMS_SLIDERS = {"xg": "xG", "shot": "Tirs", "shotOnTarget": "Tirs cadrés",
+                    "deep": "Deep passes", "ppda": "PPDA (pressing)"}
+
+    with col_dom:
+        st.markdown(f"**🏠 Équipe à domicile**")
+        for var, (vmin, vmax, def_h, _, pas) in BORNES.items():
+            saisie[f"h_{var}"] = st.slider(f"{NOMS_SLIDERS[var]} (dom.)",
+                                           vmin, vmax, def_h, pas)
+    with col_ext:
+        st.markdown(f"**✈️ Équipe à l'extérieur**")
+        for var, (vmin, vmax, _, def_a, pas) in BORNES.items():
+            saisie[f"a_{var}"] = st.slider(f"{NOMS_SLIDERS[var]} (ext.)",
+                                           vmin, vmax, def_a, pas)
+
+    x_match = pd.DataFrame([[saisie[f] for f in FEATURES]], columns=FEATURES)
+    probas = model.predict_proba(scaler_pred.transform(x_match))[0]
+    probas_dict = dict(zip(model.classes_, probas))
+    verdict = model.classes_[np.argmax(probas)]
+    NOM_VERDICT = {"V": "🏠 Victoire de l'équipe à domicile",
+                   "N": "🤝 Match nul",
+                   "D": "✈️ Victoire de l'équipe à l'extérieur"}
+
+    col_g, col_d = st.columns([1, 1.3])
+    with col_g:
+        st.markdown(f"### Prédiction : {NOM_VERDICT[verdict]}")
+        st.metric("Confiance du modèle", f"{probas_dict[verdict]*100:.1f}%")
+    with col_d:
+        fig = go.Figure(go.Bar(
+            x=[probas_dict["V"] * 100, probas_dict["N"] * 100, probas_dict["D"] * 100],
+            y=["Victoire domicile", "Match nul", "Victoire extérieur"],
+            orientation="h", marker_color=[C_DOM, C_NEU, C_EXT],
+            text=[f"{probas_dict[k]*100:.1f}%" for k in ["V", "N", "D"]],
+            textposition="outside",
+        ))
+        fig.update_layout(title="Probabilités prédites", xaxis_range=[0, 105],
+                          xaxis_title="Probabilité (%)", height=300,
+                          margin=dict(t=50, b=10))
+        st.plotly_chart(fig, use_container_width=True)
