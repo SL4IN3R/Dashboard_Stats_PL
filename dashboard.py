@@ -135,28 +135,29 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
     font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Navigation sidebar : radio déguisé en menu, actif = bleu plein ---------- */
-[data-testid="stSidebar"] [role="radiogroup"] { gap: 2px; }
-[data-testid="stSidebar"] label[data-baseweb="radio"] {
-    display: flex; align-items: center; width: 100%;
-    padding: 8px 12px; margin: 0;
-    border-radius: 0.5rem;
+/* ---------- Navigation sidebar : boutons pleine largeur, actif = bleu plein ---------- */
+[data-testid="stSidebar"] [class*="st-key-nav_"] { margin-bottom: -0.75rem; }
+[data-testid="stSidebar"] [class*="st-key-nav_"] button {
+    justify-content: flex-start;
+    background: transparent;
     border: 1px solid transparent;
-    cursor: pointer;
+    border-radius: 0.5rem;
+    padding: 7px 12px;
+    min-height: 0;
+    color: #DAE2FD;
+    font-size: 0.9rem;
     transition: border-color .15s ease, background .15s ease;
 }
-[data-testid="stSidebar"] label[data-baseweb="radio"]:hover {
-    background: #131B2E; border-color: #2D3449;
+[data-testid="stSidebar"] [class*="st-key-nav_"] button p {
+    color: inherit; font-size: 0.9rem;
 }
-[data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child { display: none; }
-[data-testid="stSidebar"] label[data-baseweb="radio"] p {
-    color: #DAE2FD; font-size: 0.9rem;
+[data-testid="stSidebar"] [class*="st-key-nav_"] button:hover {
+    background: #131B2E; border-color: #2D3449; color: #DAE2FD;
 }
-[data-testid="stSidebar"] label[data-baseweb="radio"]:has(input:checked) {
+[data-testid="stSidebar"] [class*="st-key-nav_"] button[kind="primary"],
+[data-testid="stSidebar"] [class*="st-key-nav_"] button[kind="primary"]:hover {
     background: #0566D9; border-color: #0566D9;
-}
-[data-testid="stSidebar"] label[data-baseweb="radio"]:has(input:checked) p {
-    color: #FFFFFF !important; font-weight: 600;
+    color: #FFFFFF; font-weight: 600;
 }
 
 /* ---------- Sidebar : commande center ---------- */
@@ -270,7 +271,14 @@ PAGES = [
     "🔗 Corrélations", "🧭 ACP", "🎯 Clustering",
     "⏱️ Séries temporelles", "🔮 Prédiction",
 ]
-page = st.sidebar.radio("Navigation", PAGES, label_visibility="collapsed")
+if "page" not in st.session_state:
+    st.session_state.page = PAGES[0]
+for i, p in enumerate(PAGES):
+    if st.sidebar.button(p, key=f"nav_{i}", use_container_width=True,
+                         type="primary" if st.session_state.page == p else "secondary"):
+        st.session_state.page = p
+        st.rerun()
+page = st.session_state.page
 
 st.sidebar.divider()
 saisons = sorted(df_full["season"].unique())
