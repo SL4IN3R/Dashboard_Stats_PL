@@ -34,10 +34,177 @@ st.set_page_config(
     layout="wide",
 )
 
-C_DOM = "#185FA5"   # bleu   → domicile
-C_EXT = "#3B6D11"   # vert   → extérieur
-C_NEU = "#f29407"   # orange → neutre / total
-PALETTE = ["#185FA5", "#f29407", "#3B6D11", "#B02E2E", "#6A3D9A", "#0F8B8D", "#C74B85", "#7A6C5D"]
+# Design system "Apex Analytics" (cf. DESIGN.md) — dark mode encre + émeraude/bleu électrique
+C_DOM = "#3B82F6"     # bleu électrique → domicile / séries secondaires
+C_EXT = "#10B981"     # émeraude       → extérieur / tendances positives
+C_NEU = "#F59E0B"     # orange système → neutre / total
+C_ACCENT = "#4EDEA3"  # émeraude claire (accent UI, états actifs)
+SURFACE = "#131B2E"           # surface-container-low
+SURFACE_HI = "#171F33"        # surface-container
+BORDER = "rgba(45,52,73,0.8)" # outline des cartes (~#2d3449)
+SLATE = "#94A3B8"             # texte secondaire
+PALETTE = ["#3B82F6", "#F59E0B", "#10B981", "#B090FF", "#F472B6", "#22D3EE", "#FB7185", "#A3E635"]
+
+# --- Template Plotly global (appliqué à tous les graphiques) ---
+# Axes 1px slate, grilles minimales, tooltips "glassmorphic" — cf. DESIGN.md
+import plotly.io as pio
+FONT_STACK = "Inter, 'Segoe UI', system-ui, sans-serif"
+MONO_STACK = "'JetBrains Mono', 'Cascadia Mono', monospace"
+pio.templates["apex"] = go.layout.Template(
+    layout=go.Layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family=FONT_STACK, color=SLATE, size=13),
+        title=dict(font=dict(size=16, color="#F8FAFC", family=FONT_STACK), x=0.0),
+        xaxis=dict(gridcolor="rgba(148,163,184,0.08)", zerolinecolor="rgba(148,163,184,0.2)",
+                   linecolor="rgba(148,163,184,0.25)", tickfont=dict(family=MONO_STACK, size=11)),
+        yaxis=dict(gridcolor="rgba(148,163,184,0.08)", zerolinecolor="rgba(148,163,184,0.2)",
+                   linecolor="rgba(148,163,184,0.25)", tickfont=dict(family=MONO_STACK, size=11)),
+        polar=dict(bgcolor="rgba(23,31,51,0.4)",
+                   radialaxis=dict(gridcolor="rgba(148,163,184,0.15)"),
+                   angularaxis=dict(gridcolor="rgba(148,163,184,0.15)")),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(family=MONO_STACK, size=11)),
+        colorway=PALETTE,
+        hoverlabel=dict(bgcolor="rgba(15,23,42,0.85)", bordercolor="rgba(78,222,163,0.4)",
+                        font=dict(color="#DAE2FD", family=FONT_STACK)),
+    )
+)
+pio.templates.default = "apex"
+
+# --- CSS custom "Apex Analytics" : typo, hero, cartes KPI, onglets, sidebar ---
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+
+html, body, [class*="css"], [data-testid="stAppViewContainer"] {
+    font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ---------- Bannière héro : carte encre + badge émeraude ---------- */
+.hero {
+    background: #131B2E;
+    border: 1px solid #2D3449;
+    border-radius: 1rem;
+    padding: 2rem 2.4rem 1.8rem;
+    margin-bottom: 1.2rem;
+}
+.hero-badge {
+    display: inline-block;
+    color: #4EDEA3;
+    background: rgba(78,222,163,0.10);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    border: 1px solid rgba(78,222,163,0.35);
+    border-radius: 9999px;
+    padding: 5px 16px;
+    margin-bottom: 0.8rem;
+}
+.hero h1 {
+    color: #F8FAFC;
+    font-size: 2.6rem;
+    font-weight: 800;
+    margin: 0 0 0.4rem 0;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.hero p { color: #94A3B8; margin: 0; font-size: 1rem; line-height: 1.6; }
+
+/* ---------- Cartes KPI : bordure 1px, hover émeraude (pas d'ombres) ---------- */
+[data-testid="stMetric"] {
+    background: #171F33;
+    border: 1px solid #2D3449;
+    border-radius: 0.5rem;
+    padding: 1rem 1.2rem;
+    transition: border-color .15s ease;
+}
+[data-testid="stMetric"]:hover { border-color: #4EDEA3; }
+[data-testid="stMetricLabel"] p {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #94A3B8 !important;
+}
+[data-testid="stMetricValue"] {
+    color: #4EDEA3;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Onglets en pilules : actif = bleu électrique plein ---------- */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 8px;
+    flex-wrap: wrap;
+    background: transparent;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
+    background: #131B2E;
+    border: 1px solid #2D3449;
+    border-radius: 0.5rem;
+    padding: 7px 18px;
+    transition: border-color .15s ease, background .15s ease;
+}
+[data-testid="stTabs"] [data-baseweb="tab"]:hover { border-color: #3B82F6; }
+[data-testid="stTabs"] [aria-selected="true"] {
+    background: #0566D9 !important;
+    border-color: #0566D9 !important;
+}
+[data-testid="stTabs"] [aria-selected="true"] p { color: #FFFFFF !important; }
+[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+[data-testid="stTabs"] [data-baseweb="tab-border"] { display: none; }
+
+/* ---------- Sidebar : commande center ---------- */
+[data-testid="stSidebar"] {
+    background: #060E20;
+    border-right: 1px solid #2D3449;
+}
+.brand { display: flex; align-items: center; gap: 12px; padding: 4px 0 10px; }
+.brand-logo {
+    width: 44px; height: 44px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(78,222,163,0.12);
+    border: 1px solid rgba(78,222,163,0.4);
+    border-radius: 9999px;
+    font-size: 1.3rem;
+}
+.brand-name { color: #F8FAFC; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+.brand-sub {
+    color: #94A3B8; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.nav-item {
+    display: flex; align-items: center; gap: 10px;
+    color: #DAE2FD; font-size: 0.88rem;
+    padding: 7px 12px; margin: 2px 0;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+}
+.nav-item:hover { background: #131B2E; border-color: #2D3449; }
+.nav-stats {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+    color: #94A3B8; letter-spacing: 0.05em;
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.25);
+    border-radius: 0.5rem; padding: 8px 12px; margin: 6px 0;
+}
+.nav-stats b { color: #4EDEA3; }
+
+/* ---------- Divers ---------- */
+[data-testid="stExpander"] {
+    border: 1px solid #2D3449;
+    border-radius: 0.5rem;
+    background: #131B2E;
+}
+[data-testid="stAlert"] { border-radius: 0.5rem; }
+h2, h3 { color: #F8FAFC; letter-spacing: -0.01em; }
+hr { border-color: #2D3449; }
+[data-testid="stDataFrame"] { border: 1px solid #2D3449; border-radius: 0.5rem; }
+</style>
+""", unsafe_allow_html=True)
 
 VARS_NUM = ["h_goals", "a_goals", "h_xg", "a_xg",
             "h_shot", "a_shot", "h_shotOnTarget", "a_shotOnTarget",
@@ -93,8 +260,15 @@ def gini(valeurs):
 # ------------------------------------------------------------
 df_full = charger_donnees()
 
-st.sidebar.title("⚽ Premier League")
-st.sidebar.caption("Analyse de Données — EPT 2025-2026\nSource : Understat.com")
+st.sidebar.markdown("""
+<div class="brand">
+    <div class="brand-logo">⚽</div>
+    <div>
+        <div class="brand-name">Premier League</div>
+        <div class="brand-sub">Analyse de Données — EPT 2025-2026</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 saisons = sorted(df_full["season"].unique())
 saison_min, saison_max = st.sidebar.select_slider(
@@ -105,22 +279,31 @@ saison_min, saison_max = st.sidebar.select_slider(
 df = df_full[(df_full["season"] >= saison_min) & (df_full["season"] <= saison_max)].copy()
 
 equipes = sorted(set(df["team_h"]) | set(df["team_a"]))
-st.sidebar.markdown(f"**{len(df)}** matchs · **{len(equipes)}** équipes")
-st.sidebar.divider()
 st.sidebar.markdown(
-    "**Sections du projet**\n"
-    "- Vue d'ensemble\n"
-    "- Équipes\n"
-    "- Statistiques descriptives\n"
-    "- Corrélations\n"
-    "- ACP\n"
-    "- Clustering\n"
-    "- Séries temporelles\n"
-    "- Prédiction (rég. logistique)"
+    f'<div class="nav-stats"><b>{len(df)}</b> MATCHS &nbsp;·&nbsp; '
+    f'<b>{len(equipes)}</b> ÉQUIPES</div>',
+    unsafe_allow_html=True,
+)
+st.sidebar.divider()
+sections = [
+    ("📊", "Vue d'ensemble"), ("🏟️", "Équipes"),
+    ("📈", "Statistiques descriptives"), ("🔗", "Corrélations"),
+    ("🧭", "ACP"), ("🎯", "Clustering"),
+    ("⏱️", "Séries temporelles"), ("🔮", "Prédiction (rég. logistique)"),
+]
+st.sidebar.markdown(
+    "".join(f'<div class="nav-item">{ico}&nbsp; {nom}</div>' for ico, nom in sections),
+    unsafe_allow_html=True,
 )
 
-st.title("Performances en Premier League (2015-2023)")
-st.caption(f"Période affichée : saisons {saison_min}-{saison_min+1} à {saison_max}-{saison_max+1}")
+st.markdown(f"""
+<div class="hero">
+    <div class="hero-badge">⊕ PREMIER LEAGUE · UNDERSTAT</div>
+    <h1>Performances en Premier League</h1>
+    <p>{len(df):,} matchs analysés · saisons {saison_min}-{str(saison_min+1)[2:]} → {saison_max}-{str(saison_max+1)[2:]} · {len(equipes)} équipes
+    &nbsp;|&nbsp; Projet Analyse de Données — EPT 2025-2026</p>
+</div>
+""".replace(",", " "), unsafe_allow_html=True)
 
 onglets = st.tabs([
     "📊 Vue d'ensemble", "🏟️ Équipes", "📈 Descriptives",
@@ -238,7 +421,7 @@ with onglets[1]:
         fig = go.Figure(go.Scatterpolar(
             r=valeurs + valeurs[:1],
             theta=labels_radar + labels_radar[:1],
-            fill="toself", line_color=C_DOM, fillcolor="rgba(24,95,165,0.25)",
+            fill="toself", line_color=C_DOM, fillcolor="rgba(59,130,246,0.25)",
             name=equipe_sel,
         ))
         fig.update_layout(
@@ -322,10 +505,10 @@ with onglets[2]:
     with col_g:
         fig = go.Figure()
         fig.add_scatter(x=cum_eq, y=cum_eq, name="Égalité parfaite",
-                        line=dict(color="gray", dash="dash"))
+                        line=dict(color="rgba(148,163,184,0.6)", dash="dash"))
         fig.add_scatter(x=cum_eq, y=cum_pts, name="Courbe de Lorenz",
                         line=dict(color=C_DOM, width=2.5), fill="tonexty",
-                        fillcolor="rgba(24,95,165,0.15)")
+                        fillcolor="rgba(59,130,246,0.15)")
         fig.update_layout(title=f"Courbe de Lorenz des points cumulés — Gini = {G:.3f}",
                           xaxis_title="Part cumulée des équipes",
                           yaxis_title="Part cumulée des points",
@@ -414,7 +597,7 @@ with onglets[4]:
         fig = go.Figure()
         theta = np.linspace(0, 2 * np.pi, 100)
         fig.add_scatter(x=np.cos(theta), y=np.sin(theta), mode="lines",
-                        line=dict(color="lightgray"), showlegend=False)
+                        line=dict(color="rgba(148,163,184,0.35)"), showlegend=False)
         for i, v in enumerate(VARS_NUM):
             couleur = C_DOM if v.startswith("h_") else C_EXT
             fig.add_annotation(x=loadings[i, 0], y=loadings[i, 1], ax=0, ay=0,
@@ -621,7 +804,8 @@ with onglets[7]:
         LABELS_RES = ["V", "N", "D"]
         NOMS_RES = ["Victoire dom.", "Nul", "Victoire ext."]
         cm = confusion_matrix(y_test, y_hat, labels=LABELS_RES)
-        fig = px.imshow(cm, text_auto=True, color_continuous_scale="Blues",
+        fig = px.imshow(cm, text_auto=True,
+                        color_continuous_scale=["#131B2E", "#0E6E4F", "#4EDEA3"],
                         x=[f"Prédit {n}" for n in NOMS_RES],
                         y=[f"Réel {n}" for n in NOMS_RES],
                         title="Matrice de confusion (ensemble de test)")
